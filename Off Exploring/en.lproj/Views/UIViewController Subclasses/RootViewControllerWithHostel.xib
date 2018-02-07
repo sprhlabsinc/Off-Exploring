@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="8191" systemVersion="15A282a" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none">
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="8154"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner" customClass="RootViewController">
+            <connections>
+                <outlet property="aboutButton" destination="45" id="46"/>
+                <outlet property="bookHostel" destination="12" id="15"/>
+                <outlet property="changeLocation" destination="14" id="16"/>
+                <outlet property="downloadingHostels" destination="33" id="34"/>
+                <outlet property="hostelDescription" destination="24" id="26"/>
+                <outlet property="hostelFooter" destination="29" id="30"/>
+                <outlet property="hostelHeader" destination="23" id="27"/>
+                <outlet property="hostelImage" destination="18" id="19"/>
+                <outlet property="hostelPrice" destination="31" id="32"/>
+                <outlet property="hostelRating" destination="20" id="28"/>
+                <outlet property="hostelRatingStar" destination="39" id="40"/>
+                <outlet property="settingsButton" destination="9" id="11"/>
+                <outlet property="view" destination="1" id="5"/>
+                <outlet property="viewAlbums" destination="4" id="35"/>
+                <outlet property="viewBlogs" destination="3" id="36"/>
+                <outlet property="viewHostels" destination="13" id="17"/>
+            </connections>
+        </placeholder>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <viewController id="8">
+            <view key="view" contentMode="scaleToFill" id="1">
+                <rect key="frame" x="0.0" y="64" width="320" height="480"/>
+                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                <subviews>
+                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" id="3">
+                        <rect key="frame" x="12" y="4" width="142" height="101"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" name="Helvetica-Bold" family="Helvetica" pointSize="15"/>
+                        <state key="normal" image="menuBlogs.png">
+                            <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                        </state>
+                        <connections>
+                            <action selector="viewBlogs:" destination="-1" eventType="touchUpInside" id="6"/>
+                        </connections>
+                    </button>
+                    <button opaque="NO" tag="1" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" id="4">
+                        <rect key="frame" x="165" y="4" width="142" height="101"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" name="Helvetica-Bold" family="Helvetica" pointSize="15"/>
+                        <state key="normal" image="menuAlbums.png">
+                            <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                        </state>
+                        <connections>
+                            <action selector="viewPhotos:" destination="-1" eventType="touchUpInside" id="7"/>
+                        </connections>
+                    </button>
+                    <button opaque="NO" alpha="0.0" tag="2" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="wordWrap" id="12">
+                        <rect key="frame" x="21" y="329" width="88" height="41"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" name="Helvetica-Bold" family="Helvetica" pointSize="11"/>
+                        <state key="normal" title="Book This Hostel" backgroundImage="buttonHostels.png">
+                            <color key="titleColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                            <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                        </state>
+                        <connections>
+                            <action selector="viewHostel" destination="-1" eventType="touchUpInside" id="43"/>
+                        </connections>
+                    </button>
+                    <button opaque="NO" alpha="0.0" tag="3" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="wordWrap" id="13">
+                        <rect key="frame" x="116" y="329" width="88" height="41"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" name="Helvetica-Bold" family="Helvetica" pointSize="11"/>
+                        <state key="normal" title="View More Hostels" backgroundImage="buttonHostels.png">
+                            <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
+                            <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                        </state>
+                        <connections>
+                            <action selector="viewHostelsList:" destination="-1" eventType="touchUpInside" id="44"/>
+                        </connections>
+                    </button>
+                    <button opaque="NO" alpha="0.0" tag="4" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="wordWrap" id="14">
+                        <rect key="frame" x="210" y="329" width="88" height="41"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" name="Helvetica-Bold" family="Helvetica" pointSize="11"/>
+                        <state key="normal" title="Change Location" backgroundImage="buttonHostels.png">
+                            <color key="titleColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                            <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                        </state>
+                        <connections>
+                            <action selector="searchForHostels" destination="-1" eventType="touchUpInside" id="41"/>
+                        </connections>
+                    </button>
+                    <imageView userInteractionEnabled="NO" contentMode="scaleToFill" id="18">
+                        <rect key="frame" x="25" y="235" width="61" height="46"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                    </imageView>
+                    <imageView hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="scaleToFill" image="Star.png" id="39">
+                        <rect key="frame" x="261" y="282" width="36" height="36"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                    </imageView>
+                    <label opaque="NO" clipsSubviews="YES" userInteractionEnabled="NO" alpha="0.0" contentMode="left" text="100%" textAlignment="center" lineBreakMode="tailTruncation" minimumFontSize="10" id="20">
+                        <rect key="frame" x="258" y="289" width="42" height="21"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" name="Helvetica-Bold" family="Helvetica" pointSize="11"/>
+                        <color key="textColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <label opaque="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="left" text="Looking for hostels in" lineBreakMode="tailTruncation" minimumFontSize="10" id="23">
+                        <rect key="frame" x="25" y="202" width="246" height="21"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" name="Helvetica-Bold" family="Helvetica" pointSize="13"/>
+                        <color key="textColor" red="0.49019607840000001" green="0.28235294119999998" blue="0.1450980392" alpha="1" colorSpace="calibratedRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <label opaque="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="left" text="Searching for the best places to stay. If we find a recommendation it will appear here in a moment." lineBreakMode="tailTruncation" numberOfLines="3" minimumFontSize="10" id="24">
+                        <rect key="frame" x="94" y="235" width="206" height="46"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" name="Helvetica" family="Helvetica" pointSize="11"/>
+                        <color key="textColor" red="0.49019607840000001" green="0.28235294119999998" blue="0.1450980392" alpha="1" colorSpace="calibratedRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <label opaque="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="left" text="" lineBreakMode="tailTruncation" minimumFontSize="10" id="29">
+                        <rect key="frame" x="25" y="289" width="178" height="21"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" name="Helvetica-BoldOblique" family="Helvetica" pointSize="11"/>
+                        <color key="textColor" red="0.48627450979999998" green="0.28235294119999998" blue="0.14117647059999999" alpha="1" colorSpace="calibratedRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <label opaque="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="left" text="" lineBreakMode="tailTruncation" minimumFontSize="10" id="31">
+                        <rect key="frame" x="170" y="231" width="45" height="21"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" name="Helvetica-BoldOblique" family="Helvetica" pointSize="14"/>
+                        <color key="textColor" red="0.48627450979999998" green="0.28235294119999998" blue="0.14117647059999999" alpha="1" colorSpace="calibratedRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <activityIndicatorView hidden="YES" opaque="NO" contentMode="scaleToFill" style="gray" id="33">
+                        <rect key="frame" x="269" y="202" width="20" height="20"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                    </activityIndicatorView>
+                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" id="49">
+                        <rect key="frame" x="11" y="134" width="144" height="45"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" type="boldSystem" pointSize="15"/>
+                        <state key="normal" image="messages.png">
+                            <color key="titleColor" red="0.19607843459999999" green="0.30980393290000002" blue="0.52156865600000002" alpha="1" colorSpace="calibratedRGB"/>
+                            <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                        </state>
+                        <state key="highlighted">
+                            <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                        </state>
+                        <connections>
+                            <action selector="messagesButtonPressed:" destination="-1" eventType="touchUpInside" id="50"/>
+                        </connections>
+                    </button>
+                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" id="51">
+                        <rect key="frame" x="164" y="134" width="144" height="45"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <animations/>
+                        <fontDescription key="fontDescription" type="boldSystem" pointSize="15"/>
+                        <state key="normal" image="videos.png">
+                            <color key="titleColor" red="0.19607843459999999" green="0.30980393290000002" blue="0.52156865600000002" alpha="1" colorSpace="calibratedRGB"/>
+                            <color key="titleShadowColor" white="0.5" alpha="1" colorSpace="calibratedWhite"/>
+                        </state>
+                        <state key="highlighted">
+                            <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                        </state>
+                        <connections>
+                            <action selector="videosButtonPressed:" destination="-1" eventType="touchUpInside" id="52"/>
+                        </connections>
+                    </button>
+                </subviews>
+                <animations/>
+                <color key="backgroundColor" white="1" alpha="0.0" colorSpace="custom" customColorSpace="calibratedWhite"/>
+            </view>
+            <extendedEdge key="edgesForExtendedLayout"/>
+            <simulatedNavigationBarMetrics key="simulatedTopBarMetrics" prompted="NO"/>
+            <freeformSimulatedSizeMetrics key="simulatedDestinationMetrics"/>
+        </viewController>
+        <barButtonItem tag="10" image="menuSettings.png" id="9">
+            <connections>
+                <action selector="viewSettingsOrSearch" destination="-1" id="48"/>
+            </connections>
+        </barButtonItem>
+        <barButtonItem title="About" id="45">
+            <connections>
+                <action selector="viewAboutPage" destination="-1" id="47"/>
+            </connections>
+        </barButtonItem>
+    </objects>
+    <resources>
+        <image name="Star.png" width="36" height="36"/>
+        <image name="buttonHostels.png" width="88" height="41"/>
+        <image name="menuAlbums.png" width="142" height="101"/>
+        <image name="menuBlogs.png" width="142" height="101"/>
+        <image name="menuSettings.png" width="20" height="20"/>
+        <image name="messages.png" width="144" height="45"/>
+        <image name="videos.png" width="144" height="45"/>
+    </resources>
+</document>

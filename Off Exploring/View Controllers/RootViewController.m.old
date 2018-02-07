@@ -1,0 +1,1219 @@
+//
+//  RootViewController.m
+//  Off Exploring
+//
+//  Created by Off Exploring on 31/03/2010.
+//  Copyright 2010 Off Exploring Ltd. All rights reserved.
+//
+
+#import "RootViewController.h"
+#import "SettingsViewController.h"
+#import "TripViewController.h"
+#import "BlogLocationViewController.h"
+#import "AlbumsTableViewController.h"
+#import "User.h"
+#import "Trips.h"
+#import "Trip.h"
+#import "OffexploringLogin.h"
+#import "AboutUsViewController.h"
+#import "DB.h"
+#import "HostelTabBarViewController.h"
+#import "Hostels.h"
+#import "ItineraryItem.h"
+#import "GANTracker.h"
+#import "Reachability.h"
+#import "MessageTextViewController.h"
+#import "Crittercism.h"
+#import "OFXNavigationBar.h"
+#import "VideosViewController.h"
+
+#pragma mark -
+#pragma mark RootViewController Private Interface
+/**
+	@brief Private interface providing methods to download and store various pieces of information from Off Exploring, ready for display
+ 
+	This private interface provides methods todownload and store various pieces of information from Off Exploring, including Trip information,
+	Itinerary information, User information and Hostel information. It also handles notifications that a User has logged in
+ */
+@interface RootViewController () 
+#pragma mark Private Method Declarations
+/**
+	Sets up user defaults for the app, including default currency
+ */
+- (void)setupDefaults;
+/**
+	Log the app usage and display "Rate this app" feature as appropriate
+ */
+- (void)logAppUsage;
+/**
+	Loads hostels selecting the most appropriate location to load with
+ */
+- (void)loadHostels;
+/**
+	Switches the RootViewControllers view to display suggested hostel information
+ */
+- (void)setupHostelDisplayView;
+/**
+	Loads the list of a suggested hostels based upon a users planned journey
+ */
+- (void)loadItineraryHostels;
+/**
+	Loads the list of suggested hostels based upon the last blogged location
+ */
+- (void)loadLastBlogHostels;
+/**
+	Displays the top suggested hostel in the view, setting labels and the hostel image
+ */
+- (void)displaySuggestedHostel;
+/**
+	Method called to load user information
+ */
+- (void)loadUser;
+/**
+	Handler for when a user logs in
+	@param dictionary A dictionary of login details
+ */
+- (void)userDidLogin:(NSDictionary *)dictionary;
+/**
+	Method called to load trip information
+ */
+- (void)loadTrips;
+/**
+	Notification handler for when trips data has loaded
+	@param notification The notification object
+ */
+- (void)tripsDataDidLoad:(NSNotification *)notification;
+/**
+	Method called to load users itinerary information
+ */
+- (void)loadItinerary;
+/**
+	Handler for when a users itinerary loads
+	@param results The itinerary information
+ */
+- (void)saveItinerary:(NSDictionary *)results;
+
+@property (nonatomic, retain) ImageLoader *imageLoader;
+@property (nonatomic, retain) Hostel *suggestedHostel;
+
+@end
+
+#pragma mark -
+#pragma mark RootViewController Implementation
+@implementation RootViewController
+
+// Public properties
+
+@synthesize settingsButton;
+@synthesize aboutButton;
+@synthesize website;
+@synthesize bookHostel;
+@synthesize viewHostels;
+@synthesize changeLocation;
+@synthesize hostelImage;
+@synthesize hostelRating;
+@synthesize hostelHeader;
+@synthesize hostelDescription;
+@synthesize hostelFooter;
+@synthesize hostelPrice;
+@synthesize suggestedHostel;
+@synthesize downloadingHostels;
+@synthesize viewBlogs;
+@synthesize viewAlbums;
+@synthesize hostelRatingStar;
+@synthesize forceHostelsRedownload;
+@synthesize failGracefully;
+
+// Private properties
+
+@synthesize imageLoader;
+
+#pragma mark UIViewController Methods
+
+- (void)dealloc {
+	[hostelRatingStar release];
+	[viewBlogs release];
+	[viewAlbums release];
+	imageLoader.delegate = nil;
+	[imageLoader release];
+	[downloadingHostels release];
+	[suggestedHostel release];
+	[hostelPrice release];
+	[hostelFooter release];
+	[hostelDescription release];
+	[hostelHeader release];
+	[hostelRating release];
+	[hostelImage release];
+	[changeLocation release];
+	[viewHostels release];
+	[bookHostel release];
+	[aboutButton release];
+	[website release];
+	[settingsButton release];
+	[super dealloc];
+}
+
+- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
+	self.failGracefully = NO;
+	[self setupDefaults];
+	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+	//number of times app ran
+	int starts = [prefs integerForKey:@"appStarts"];
+	starts = starts + 1;
+	[prefs setInteger:starts forKey:@"appStarts"];
+	[prefs synchronize];
+	
+	if ([TARGET_PARTNER isEqualToString:@"kilroy"]) {
+		withHostel = NO;
+		self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+	}
+	else {
+		User *user = [User sharedUser];
+		NSDictionary *lastBlog = [[prefs dictionaryForKey:[NSString stringWithFormat:@"latestBlog_%@",user.username]] retain];
+		if (lastBlog != nil) {
+			withHostel = YES;
+			self = [super initWithNibName:@"RootViewControllerWithHostel" bundle:[NSBundle mainBundle]];
+		}
+		else {
+			withHostel = NO;
+			self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+		}
+		[lastBlog release];
+	}
+	
+	if (self) {
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(userDidLogin:) name:@"UserDidLogin" object:nil];
+		self.suggestedHostel = nil;
+		loadingHostels = NO;
+	}
+	return self;
+}
+
+- (void)viewDidLoad {
+	User *user = [User sharedUser]; 
+	self.navigationItem.rightBarButtonItem = settingsButton;
+	self.navigationItem.leftBarButtonItem = aboutButton;
+	
+	if ([TARGET_PARTNER isEqualToString:@"kilroy"]) {
+		[self.website setTitle:[@"http://blogs.kilroy.eu/" stringByAppendingString:user.username] forState:UIControlStateNormal];
+	}
+	else{
+		[self.website setTitle:[@"http://www.offexploring.com/" stringByAppendingString:user.username] forState:UIControlStateNormal];
+	}
+	[super viewDidLoad];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+	[[GANTracker sharedTracker] trackPageview:@"/home/" withError:nil];
+	
+    OFXNavigationBar *navBar = (OFXNavigationBar *)self.navigationController.navigationBar;
+    [navBar setLogoHidden:NO];
+    
+	requestType = 0;
+	[self logAppUsage];
+	
+	if ([TARGET_PARTNER isEqualToString:@"kilroy"]) {
+		self.navigationController.view.backgroundColor = [UIColor colorWithPatternImage:[UIImage imageNamed:[NSString backgroundHome]]];
+	}
+	else {
+		[self loadHostels];
+	}
+}
+
+- (void)didReceiveMemoryWarning {
+	// Releases the view if it doesn't have a superview.
+    [super didReceiveMemoryWarning];
+	NSLog (@"***Memory Warning***");
+	
+	// Release any cached data, images, etc that aren't in use.
+}
+
+- (void)viewDidUnload {
+	// Release any retained subviews of the main view.
+	// e.g. self.myOutlet = nil;
+	self.website = nil;
+	self.settingsButton = nil;
+	self.suggestedHostel = nil;
+	self.hostelImage.image = nil;
+	self.aboutButton = nil;
+	
+	self.viewBlogs = nil;
+	self.viewAlbums = nil;
+	self.bookHostel = nil;
+	self.viewHostels = nil;
+	self.changeLocation = nil;
+	self.hostelImage = nil;
+	self.hostelRatingStar = nil;
+	self.hostelRating = nil;
+	self.hostelHeader = nil;
+	self.hostelDescription = nil;
+	self.hostelFooter = nil;
+	self.hostelPrice = nil;
+	self.downloadingHostels = nil;
+	
+	self.navigationController.view.backgroundColor = nil;
+	
+	[super viewDidUnload];
+}
+
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
+    // Return YES for supported orientations
+    return (interfaceOrientation == UIInterfaceOrientationPortrait);
+}
+
+-(void)animationDidStop:(NSString *)animationID finished:(NSNumber *)finished
+{
+	self.changeLocation.frame = CGRectMake(210, 329, 88, 41);
+	
+	[UIView beginAnimations:@"HostelDisplayCloseAnimation" context:NULL];
+	[UIView setAnimationDelay:0.1];
+	[UIView setAnimationDuration:0.5];
+	[self displaySuggestedHostel];
+	[UIView commitAnimations];
+	
+}
+
+#pragma mark Animation Handlers
+
+-(void)badHostelLoadAnimationDidStop:(NSString *)animationID finished:(NSNumber *)finished
+{
+	[self.changeLocation setTitle:@"Change Search Location" forState:UIControlStateNormal];
+	self.changeLocation.frame = CGRectMake(165, self.changeLocation.frame.origin.y, self.changeLocation.frame.size.width, self.changeLocation.frame.size.height);
+	
+	self.viewHostels.hidden = YES;
+	self.bookHostel.hidden = YES;
+	
+	[UIView beginAnimations:@"HostelDisplayCloseAnimation" context:NULL];
+	[UIView setAnimationDelay:0.1];
+	[UIView setAnimationDuration:0.5];
+	self.hostelHeader.alpha = 1;
+	self.hostelDescription.alpha = 1;
+	
+	self.viewHostels.alpha = 1;
+	self.changeLocation.alpha = 1;
+	
+	User *user = [User sharedUser];
+	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+	NSDictionary *lastBlog = [[prefs dictionaryForKey:[NSString stringWithFormat:@"latestBlog_%@",user.username]] retain];
+	self.hostelHeader.text = [NSString stringWithFormat:@"No Hostels in %@",[lastBlog objectForKey:@"area"]];
+	[lastBlog release];
+	
+	self.hostelDescription.text = @"A problem occured searching for hostels. You can retry the search, or change search location.";
+	
+	[UIView commitAnimations];
+	[downloadingHostels stopAnimating];
+	downloadingHostels.hidden = YES;
+}
+
+-(void)noHostelAnimationDidStop:(NSString *)animationID finished:(NSNumber *)finished
+{
+	self.changeLocation.frame = CGRectMake(120, self.changeLocation.frame.origin.y, self.changeLocation.frame.size.width, self.changeLocation.frame.size.height);
+	
+	self.viewHostels.hidden = YES;
+	self.bookHostel.hidden = YES;
+	
+	[UIView beginAnimations:@"HostelDisplayCloseAnimation" context:NULL];
+	[UIView setAnimationDelay:0.1];
+	[UIView setAnimationDuration:0.5];
+	self.hostelHeader.alpha = 1;
+	self.hostelDescription.alpha = 1;
+	
+	self.changeLocation.alpha = 1;
+	
+	User *user = [User sharedUser];
+	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+	NSDictionary *lastBlog = [[prefs dictionaryForKey:[NSString stringWithFormat:@"latestBlog_%@",user.username]] retain];
+	self.hostelHeader.text = [NSString stringWithFormat:@"No Hostels in %@",[lastBlog objectForKey:@"area"]];
+	[lastBlog release];
+	
+	self.hostelDescription.text = @"Change location to search for hostels.";
+	
+	[UIView commitAnimations];
+	[downloadingHostels stopAnimating];
+	downloadingHostels.hidden = YES;
+	
+	self.hostelImage.image = [UIImage imageNamed:@"hostel_placeholder.png"];
+}
+
+#pragma mark IBActions
+
+- (IBAction)viewSettingsOrSearch {
+	[[GANTracker sharedTracker] trackPageview:@"/home/settings/" withError:nil];
+	SettingsViewController *settings = [[SettingsViewController alloc] init];
+	settings.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
+	settings.root = self;
+	[self.navigationController presentViewController:settings animated:YES completion:nil];
+	[settings release];
+}
+
+- (IBAction)viewAboutPage {
+	[[GANTracker sharedTracker] trackPageview:@"/home/about_us/" withError:nil];
+	AboutUsViewController *aboutPage = [[AboutUsViewController alloc] initWithNibName:nil bundle:nil];
+    OFXNavigationBar *navBar = (OFXNavigationBar *)self.navigationController.navigationBar;
+    [navBar setLogoHidden:YES];
+    [self.navigationController pushViewController:aboutPage animated:YES];
+	[aboutPage release];
+}
+
+- (IBAction)viewBlogs:(id)selector {
+	requestType = 10;
+	[self loadTrips];
+}
+
+- (IBAction)viewPhotos:(id)selector {
+	requestType = 20;
+	[self loadTrips];
+}
+
+- (IBAction)viewWebsite {
+	User *user = [User sharedUser]; 
+	[[GANTracker sharedTracker] trackPageview:@"/home/user_site/" withError:nil];
+	NSURL *url = nil;
+	if ([TARGET_PARTNER isEqualToString:@"kilroy"]) {
+		url = [NSURL URLWithString:[@"http://blogs.kilroy.eu/" stringByAppendingString:user.username]];
+	}
+	else {
+		url = [NSURL URLWithString:[@"http://www.offexploring.com/" stringByAppendingString:user.username]];
+	}	
+	[[UIApplication sharedApplication] openURL:url];	
+}
+
+- (IBAction)viewHostelsList:(id)sender {
+	[[GANTracker sharedTracker] trackPageview:@"/home/hostels/list/" withError:nil];
+	HostelTabBarViewController *hostelsViewController = [[HostelTabBarViewController alloc] initWithNibName:nil bundle:nil];
+	hostelsViewController.rootNav = self;
+	[self.navigationController presentViewController:hostelsViewController animated:YES completion:nil];
+	[hostelsViewController release];
+}
+
+- (IBAction)searchForHostels {
+	[[GANTracker sharedTracker] trackPageview:@"/home/hostels/search/" withError:nil];
+	HostelSearchViewController *hostelSearch = [[HostelSearchViewController alloc] initWithNibName:nil bundle:nil];
+	hostelSearch.hostelDelegate = self;
+	[self presentViewController:hostelSearch animated:YES completion:nil];
+	[hostelSearch release];
+}
+
+- (IBAction)viewHostel {
+	[[GANTracker sharedTracker] trackPageview:@"/home/hostels/recommended/" withError:nil];
+	[[GANTracker sharedTracker] trackPageview:@"/home/hostels/hostel/" withError:nil];
+	HostelViewController *hostelView = [[HostelViewController alloc] initWithNibName:nil bundle:nil];
+	hostelView.rootNav = self;
+	hostelView.hostel = suggestedHostel;
+	hostelView.hostelImage = self.hostelImage.image;
+	hostelView.delegate = self;
+	[self presentViewController:hostelView animated:YES completion:nil];
+	[hostelView release];
+}
+
+- (IBAction)messagesButtonPressed:(id)sender {
+    // Uncomment for live
+    requestType = 30;
+	[self loadTrips];
+}
+
+- (IBAction)videosButtonPressed:(id)sender {
+    requestType = 40;
+    [self loadTrips];
+}
+
+#pragma mark Private Methods
+- (void)logAppUsage {
+	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+	BOOL showResults = NO;
+	User *user = [User sharedUser];
+	
+	if ([TARGET_PARTNER isEqualToString:@"offexploring"]) {
+		if (!user.itinerary) {
+			[self loadItinerary];
+		}
+		
+		showResults = [prefs boolForKey:@"showRateMeDialog"];
+	}
+	
+	double startDate = [prefs doubleForKey:@"appFirstDate"];
+	
+	if (startDate == 0) {
+		double startDate = [[NSDate date] timeIntervalSince1970];
+		[prefs setDouble:startDate forKey:@"appFirstDate"];
+		[prefs setBool:YES forKey:@"showRateMeDialog"];
+		[prefs synchronize];
+	}
+	else if (showResults == YES && [TARGET_PARTNER isEqualToString:@"offexploring"]) {
+		NSTimeInterval todaysDiff = [[NSDate date] timeIntervalSince1970];
+		NSTimeInterval dateDiff = todaysDiff - startDate;
+		int days = dateDiff / 86400;
+		
+		if (days > 5) {
+			//show dialogue;
+			UIAlertView *charAlert = [[UIAlertView alloc]
+									  initWithTitle:@"Help Spread the Word"
+									  message:@"If you like this app, please help us by rating it in the App Store. Thanks."
+									  delegate:self
+									  cancelButtonTitle:@"No Thanks"
+									  otherButtonTitles:@"Rate It Now", @"Remind Me Later", nil];
+			[charAlert show];
+			
+		}
+	}
+}
+
+- (void)loadHostels {
+	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+	User *user = [User sharedUser];
+	
+	NSDictionary *lastBlog = [[prefs dictionaryForKey:[NSString stringWithFormat:@"latestBlog_%@",user.username]] retain];
+	
+	if (withHostel == YES) {
+		
+		[self setupHostelDisplayView];
+		NSDictionary *lastHostelLookup = [[prefs dictionaryForKey:[NSString stringWithFormat:@"latestHostelLookup_%@",user.username]] retain];
+		NSDictionary *hostelPreferences = [[prefs dictionaryForKey:[NSString stringWithFormat:@"latestHostelPreferences_%@",user.username]] retain];
+		
+		NSDate *expires = [hostelPreferences objectForKey:@"expiry"];
+		
+		if ([[hostelPreferences objectForKey:@"lookupType"] intValue] == HOSTELS_LOOKUP_SEARCH && [expires laterDate:[NSDate date]] == expires && lastHostelLookup != nil) {
+			if (![Hostels loadHostelFromDBorderdBy:HOSTELS_ORDER_DEFAULT]) {
+				self.forceHostelsRedownload = YES;
+			}
+			
+			if (self.forceHostelsRedownload == YES) {
+				self.forceHostelsRedownload = NO;
+				[[DB sharedDB] emptyHostelsDB];
+				self.hostelHeader.text = [NSString stringWithFormat:@"Looking for hostels in %@",[lastHostelLookup objectForKey:@"area"]];
+				
+				hostelLoad = [[Hostels alloc] init];
+				hostelLoad.delegate = self;
+				
+				[hostelLoad loadHostelsForArea:[lastHostelLookup objectForKey:@"area"] country:[lastHostelLookup objectForKey:@"country"] 
+									  latitide:[[lastHostelLookup objectForKey:@"determinedDestination"] objectForKey:@"latitude"] 
+									 longitude:[[lastHostelLookup objectForKey:@"determinedDestination"] objectForKey:@"longitude"] 
+										within:[lastHostelLookup objectForKey:@"range"] 
+										  page:[lastHostelLookup objectForKey:@"page"] 
+									 orderedBy:[NSNumber numberWithInt:HOSTELS_ORDER_DEFAULT]];
+				
+				[downloadingHostels startAnimating];
+				downloadingHostels.hidden = NO;
+				loadingHostels = YES;
+				
+				NSDictionary *newHostelPreferences = [[NSDictionary alloc]initWithObjectsAndKeys:[NSNumber numberWithInt:HOSTELS_LOOKUP_SEARCH],@"lookupType",[NSNumber numberWithInt:HOSTELS_ORDER_DEFAULT],@"orderBy", nil];
+				[prefs setObject:newHostelPreferences forKey:[NSString stringWithFormat:@"latestHostelPreferences_%@", user.username]];
+				[prefs synchronize];
+				[newHostelPreferences release];
+			}
+			else {
+				self.suggestedHostel = [Hostels loadHostelFromDBorderdBy:HOSTELS_ORDER_DEFAULT];
+				[self displaySuggestedHostel];			
+			}
+		}
+		else if (user.itinerary) {
+			//Handle planners stuff.
+			ItineraryItem *item = [user nextItineraryItemWithSetArea:YES];
+			
+			double blogTimestamp = [[lastBlog objectForKey:@"timestamp"] doubleValue];
+			double itemTimestamp = item.timestamp;
+			
+			if (blogTimestamp > itemTimestamp) {
+				if (![Hostels loadHostelFromDBorderdBy:HOSTELS_ORDER_DEFAULT]) {
+					self.forceHostelsRedownload = YES;
+				}
+				
+				if ([[hostelPreferences objectForKey:@"lookupType"] intValue] == HOSTELS_LOOKUP_BLOG && [[lastBlog objectForKey:@"area"] isEqualToString:[lastHostelLookup objectForKey:@"area"]] && self.forceHostelsRedownload == NO) {
+					[self displaySuggestedHostel];
+				}
+				else {
+					self.forceHostelsRedownload = NO;
+					[self loadLastBlogHostels];
+				}
+			}
+			else {
+				if (lastHostelLookup != nil && item != nil && [item.area isEqualToString:[lastHostelLookup objectForKey:@"area"]] && self.forceHostelsRedownload == NO) { 
+					[self displaySuggestedHostel];
+				}
+				else {
+					self.forceHostelsRedownload = NO;
+					// Load hostels for new area;
+					[self loadItineraryHostels];
+				}
+			}
+		}
+		else if (lastBlog != nil) {
+			if (![Hostels loadHostelFromDBorderdBy:HOSTELS_ORDER_DEFAULT]) {
+				self.forceHostelsRedownload = YES;
+			}
+			
+			if ((lastHostelLookup != nil && ![[lastBlog objectForKey:@"area"] isEqualToString:[lastHostelLookup objectForKey:@"area"]]) || lastHostelLookup == nil || self.forceHostelsRedownload == YES) {
+				self.forceHostelsRedownload = NO;
+				[self loadLastBlogHostels];
+			}
+			else {
+				[self displaySuggestedHostel];
+			}
+		}
+		
+		[lastHostelLookup release];
+		[hostelPreferences release];
+	}
+	else {
+		if ((user.itinerary != nil || lastBlog != nil) && suggestedHostel == nil) {
+			withHostel = YES;
+			[self setupHostelDisplayView];
+			
+			if (user.itinerary != nil) {
+				[self loadItineraryHostels];
+			}
+			else {
+				[self loadLastBlogHostels];
+			}
+		}
+		else {
+			self.navigationController.view.backgroundColor = [UIColor colorWithPatternImage:[UIImage imageNamed:[NSString backgroundHome]]];
+		}
+	}
+	
+	[lastBlog release];
+}
+
+- (void)setupDefaults {
+	
+	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+	
+	if (![prefs objectForKey:@"currency"]) {
+		
+		NSString *defCur = [[NSLocale currentLocale] objectForKey:NSLocaleCurrencyCode];
+		NSString *defCurName = nil;
+		NSString *defCurSymbol = nil;
+		
+		if ([defCur isEqualToString:@"GBP"]) {
+			defCurName = @"United Kingdom, Pounds";
+			defCurSymbol = [[NSLocale currentLocale] objectForKey:NSLocaleCurrencySymbol];
+		}
+		else if ([defCur isEqualToString:@"CAD"]) {
+			defCurName = @"Canada, Dollars";
+			defCurSymbol = [[NSLocale currentLocale] objectForKey:NSLocaleCurrencySymbol];
+		}
+		else if ([defCur isEqualToString:@"AUD"]) {
+			defCurName = @"Australia, Dollars";
+			defCurSymbol = [[NSLocale currentLocale] objectForKey:NSLocaleCurrencySymbol];
+		}
+		else if ([defCur isEqualToString:@"EUR"]) {
+			defCurName = @"Euro Member Countries, Euro";
+			defCurSymbol = [[NSLocale currentLocale] objectForKey:NSLocaleCurrencySymbol];
+		}
+		else {
+			defCur = @"USD";
+			defCurName = @"United States, Dollars";
+			defCurSymbol = @"$";
+		}
+		
+		NSDictionary *currency = [NSDictionary dictionaryWithObjectsAndKeys:defCur, @"code", defCurName, @"name", defCurSymbol, @"symbol", nil];
+		
+		[prefs setObject:currency forKey:@"currency"];
+		[prefs synchronize];
+	}
+}
+
+- (void)setupHostelDisplayView {
+	
+	if ([TARGET_PARTNER isEqualToString:@"offexploring"]) {
+		if (self.website != nil){
+			[website removeFromSuperview];
+			self.website = nil;
+			[viewBlogs removeFromSuperview];
+			self.viewBlogs = nil;
+			[viewAlbums removeFromSuperview];
+			self.viewAlbums = nil;
+			[[NSBundle mainBundle] loadNibNamed:@"RootViewControllerWithHostel" owner:self options:nil];
+		}
+		
+		self.navigationController.view.backgroundColor = [UIColor colorWithPatternImage:[UIImage imageNamed:@"Home.png"]];
+		self.bookHostel.titleLabel.textAlignment = NSTextAlignmentCenter;
+		self.viewHostels.titleLabel.textAlignment = NSTextAlignmentCenter;
+		self.changeLocation.titleLabel.textAlignment = NSTextAlignmentCenter;
+	}
+}
+
+- (void)loadItineraryHostels {
+	
+	Reachability *r = [Reachability reachabilityWithHostName:@"www.offexploring.com"];
+	
+	NetworkStatus internetStatus = [r currentReachabilityStatus];
+	
+	if (internetStatus == ReachableViaWiFi || internetStatus == ReachableViaWWAN) {
+	
+		[[DB sharedDB] emptyHostelsDB];
+		User *user = [User sharedUser];
+		NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+		
+		ItineraryItem *item = [user nextItineraryItemWithSetArea:YES];
+		
+		self.hostelHeader.text = [NSString stringWithFormat:@"Looking for hostels in %@",item.area];
+		
+		hostelLoad = [[Hostels alloc] init];
+		hostelLoad.delegate = self;
+		
+		[hostelLoad loadHostelsForArea:item.area country:item.state within:[NSNumber numberWithDouble:2.5] page:0 orderedBy:[NSNumber numberWithInt:HOSTELS_ORDER_DEFAULT]];
+		
+		[downloadingHostels startAnimating];
+		downloadingHostels.hidden = NO;
+		loadingHostels = YES;
+		
+		NSDictionary *newHostelPreferences = [[NSDictionary alloc]initWithObjectsAndKeys:[NSNumber numberWithInt:HOSTELS_LOOKUP_PLANNER],@"lookupType",[NSNumber numberWithInt:HOSTELS_ORDER_DEFAULT],@"orderBy", nil];
+		[prefs setObject:newHostelPreferences forKey:[NSString stringWithFormat:@"latestHostelPreferences_%@", user.username]];
+		[prefs synchronize];
+		[newHostelPreferences release];
+	}
+}
+
+- (void)loadLastBlogHostels {
+	Reachability *r = [Reachability reachabilityWithHostName:@"www.offexploring.com"];
+	NetworkStatus internetStatus = [r currentReachabilityStatus];
+	if (internetStatus == ReachableViaWiFi || internetStatus == ReachableViaWWAN) {
+		[[DB sharedDB] emptyHostelsDB];
+		
+		User *user = [User sharedUser];
+		NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+		NSDictionary *lastBlog = [[prefs dictionaryForKey:[NSString stringWithFormat:@"latestBlog_%@",user.username]] retain];
+		
+		self.hostelHeader.text = [NSString stringWithFormat:@"Looking for hostels in %@",[lastBlog objectForKey:@"area"]];
+		
+		hostelLoad = [[Hostels alloc] init];
+		hostelLoad.delegate = self;
+		[hostelLoad loadHostelsForArea:[lastBlog objectForKey:@"area"] country:[lastBlog objectForKey:@"country"] within:[NSNumber numberWithDouble:2.5] page:0 orderedBy:[NSNumber numberWithInt:HOSTELS_ORDER_DEFAULT]];
+		
+		[downloadingHostels startAnimating];
+		downloadingHostels.hidden = NO;
+		loadingHostels = YES;
+		
+		NSDictionary *newHostelPreferences = [[NSDictionary alloc]initWithObjectsAndKeys:[NSNumber numberWithInt:HOSTELS_LOOKUP_BLOG],@"lookupType",[NSNumber numberWithInt:HOSTELS_ORDER_DEFAULT],@"orderBy", nil];
+		[prefs setObject:newHostelPreferences forKey:[NSString stringWithFormat:@"latestHostelPreferences_%@", user.username]];
+		[prefs synchronize];
+		[newHostelPreferences release];
+		
+		[lastBlog release];
+	}
+}
+
+- (void)displaySuggestedHostel {
+	if ([TARGET_PARTNER isEqualToString:@"offexploring"]) {
+		if (!self.suggestedHostel) {
+			self.suggestedHostel = [Hostels loadHostelFromDBorderdBy:HOSTELS_ORDER_DEFAULT];
+		}
+		if (!self.suggestedHostel) {
+			
+			[UIView beginAnimations:@"HostelDisplayOpenAnimation" context:NULL];
+			[UIView setAnimationDelegate:self];
+			[UIView setAnimationDelay:0.1];
+			[UIView setAnimationDuration:0.5];
+			[UIView setAnimationDidStopSelector:@selector(noHostelAnimationDidStop:finished:)];
+			
+			self.hostelRating.alpha = 0;
+			self.hostelHeader.alpha = 0;
+			self.hostelDescription.alpha = 0;
+			self.hostelFooter.alpha = 0;
+			self.hostelPrice.alpha = 0;
+			[UIView commitAnimations];
+			
+		}
+		else {
+			
+			NSArray *images = [suggestedHostel loadImages:YES];
+			NSString *uri = nil;
+			if ([images count] > 0) {
+				uri = [images objectAtIndex:0];
+			}
+			else {
+				images = [suggestedHostel loadImages:NO];
+				if ([images count] > 0) {
+					uri = [images objectAtIndex:0];
+				}
+			}	
+			
+			if (uri) {
+				ImageLoader *imageLoad = [[ImageLoader alloc] initWithURL:uri isForeign:YES delegate:self];
+				self.imageLoader = imageLoad;
+				[imageLoad release];
+			}
+			
+			self.hostelImage.image = [UIImage imageNamed:@"hostel_placeholder.png"];
+			
+			NSString *footerText = [NSString stringWithFormat:@"%@, from", suggestedHostel.name]; 
+			CGSize theSize = [footerText sizeWithFont:[UIFont fontWithName:@"Helvetica-BoldOblique" size:11.0] forWidth:self.hostelFooter.frame.size.width lineBreakMode:UILineBreakModeClip];
+			
+			self.hostelPrice.frame = CGRectMake(theSize.width + 30, self.hostelFooter.frame.origin.y - 1, self.hostelPrice.frame.size.width, self.hostelPrice.frame.size.height);
+			
+			self.hostelRating.alpha = 1;
+			self.hostelHeader.alpha = 1;
+			self.hostelDescription.alpha = 1;
+			self.hostelFooter.alpha = 1;
+			self.hostelPrice.alpha = 1;
+			
+			self.bookHostel.alpha = 1;
+			self.bookHostel.hidden = NO;
+			self.viewHostels.alpha = 1;
+			self.viewHostels.hidden = NO;
+			self.changeLocation.alpha = 1;
+			self.changeLocation.frame = CGRectMake(210, 329, self.changeLocation.frame.size.width, self.changeLocation.frame.size.height);
+			
+			if (round(suggestedHostel.overall) != 0) {
+				self.hostelRating.text = [NSString stringWithFormat:@"%.0f%%", suggestedHostel.overall];
+				self.hostelRatingStar.hidden = NO;
+			}
+			else {
+				self.hostelRating.text = @"";
+			}
+			
+			self.hostelHeader.text = [NSString stringWithFormat:@"Suggested Hostel in %@", suggestedHostel.city];
+			self.hostelDescription.text = suggestedHostel.shortdescription;
+			self.hostelFooter.text = footerText;
+			
+			User *user = [User sharedUser];
+			NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+			NSDictionary *lastHostelLookup = [[prefs dictionaryForKey:[NSString stringWithFormat:@"latestHostelLookup_%@",user.username]] retain];
+			NSString *currencySymbol = [[lastHostelLookup objectForKey:@"currency"] objectForKey:@"symbol"];
+			self.hostelPrice.text = [NSString stringWithFormat:@"%@%.2f", currencySymbol,[[[suggestedHostel lowestPrice] objectForKey:@"price"] doubleValue]];
+			
+			[lastHostelLookup release];
+			[downloadingHostels stopAnimating];
+			downloadingHostels.hidden = YES;
+			
+		}
+	}
+}
+
+- (void)loadUser {
+	User *user = [User sharedUser];
+	OffexConnex *connex = [[OffexConnex alloc] init];
+	connex.delegate = self;
+	NSString *url = [connex buildOffexRequestStringWithURI:[@"user/" stringByAppendingString:user.username]];
+	[connex beginLoadingOffexploringDataFromURL:url];
+}
+
+- (void)userDidLogin:(NSDictionary *)dictionary {
+	[[GANTracker sharedTracker] trackPageview:@"/home/" withError:nil];
+	User *user = [User sharedUser];
+	user.username = [dictionary valueForKey:@"username"];
+    [Crittercism setUsername:user.username];
+	user.password = [dictionary valueForKey:@"password"];
+	//self.title = user.username;
+	if ([TARGET_PARTNER isEqualToString:@"kilroy"]) {
+		[self.website setTitle:[@"http://blogs.kilroy.eu/" stringByAppendingString:user.username] forState:UIControlStateNormal];
+	}
+	else{
+		[self.website setTitle:[@"http://www.offexploring.com/" stringByAppendingString:user.username] forState:UIControlStateNormal];
+	}
+	[self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)loadTrips {
+	HUD = [[MBProgressHUD alloc] initWithWindow:[[UIApplication sharedApplication] keyWindow]];
+	[[[UIApplication sharedApplication] keyWindow] addSubview:HUD];
+	HUD.delegate = self;
+	HUD.labelText = @"Loading...";
+	[HUD show:YES];
+	User *user = [User sharedUser];
+	OffexConnex *connex = [[OffexConnex alloc] init];
+	connex.delegate = self;
+	NSString *url = [connex buildOffexRequestStringWithURI:[[@"user/" stringByAppendingString:user.username] stringByAppendingString:@"/trip"]];
+	[connex beginLoadingOffexploringDataFromURL:url];
+}
+
+- (void)tripsDataDidLoad:(NSNotification *)notification {
+	[[NSNotificationCenter defaultCenter] removeObserver:self name:@"TripsDataDidLoad" object:nil];
+	[HUD hide:YES];
+	
+	User *user = [User sharedUser];
+	user.globalDraft = NO;
+	
+	Trips *trips = [[notification object] retain];
+	Trip *firstTrip = [[trips.tripsArray objectAtIndex:0] retain];
+	
+	if ([firstTrip.urlSlug isEqualToString:@"default"]) {
+		[trips release];
+		if (requestType == 10) {
+			[[GANTracker sharedTracker] trackPageview:@"/home/blogs/" withError:nil];
+			BlogLocationViewController *locationView = [[BlogLocationViewController alloc] initWithNibName:nil bundle:nil];
+			locationView.title = @"Locations";
+			locationView.activeTrip = firstTrip;
+            OFXNavigationBar *navBar = (OFXNavigationBar *)self.navigationController.navigationBar;
+            [navBar setLogoHidden:YES];
+            [self.navigationController pushViewController:locationView animated:YES];
+			[locationView release];
+			[firstTrip release];
+		}
+		else if (requestType == 20) {
+			[[GANTracker sharedTracker] trackPageview:@"/home/albums/" withError:nil];
+			AlbumsTableViewController *albumView = [[AlbumsTableViewController alloc] initWithNibName:nil bundle:nil];
+			albumView.title = @"Photo Albums";
+			albumView.activeTrip = firstTrip;
+            OFXNavigationBar *navBar = (OFXNavigationBar *)self.navigationController.navigationBar;
+            [navBar setLogoHidden:YES];
+            [self.navigationController pushViewController:albumView animated:YES];
+			[albumView release];
+			[firstTrip release];
+		}
+        else if (requestType == 30) {
+            [[GANTracker sharedTracker] trackPageview:@"/home/messages/" withError:nil];
+            MessageTextViewController *controller = [[MessageTextViewController alloc] initWithNibName:nil bundle:nil];
+            [controller loadMessagesForTrip:firstTrip];
+            OFXNavigationBar *navBar = (OFXNavigationBar *)self.navigationController.navigationBar;
+            [navBar setLogoHidden:YES];
+            [self.navigationController pushViewController:controller animated:YES];
+            [controller release];
+            [firstTrip release];
+        }
+        else if (requestType == 40) {
+            [[GANTracker sharedTracker] trackPageview:@"/home/videos/" withError:nil];
+            VideosViewController *controller = [[VideosViewController alloc] initWithNibName:nil bundle:nil];
+            controller.activeTrip = firstTrip;
+            OFXNavigationBar *navBar = (OFXNavigationBar *)self.navigationController.navigationBar;
+            [navBar setLogoHidden:YES];
+            [self.navigationController pushViewController:controller animated:YES];
+            [controller release];
+            [firstTrip release];
+        }
+        else {
+            [firstTrip release];
+        }
+	}
+	else {
+		[[GANTracker sharedTracker] trackPageview:@"/home/trips/" withError:nil];
+		TripViewController *tripView = [[TripViewController alloc] initWithNibName:nil bundle:nil];
+		tripView.title = @"Trips";
+		tripView.requestType = requestType;
+		tripView.trips = trips;
+        OFXNavigationBar *navBar = (OFXNavigationBar *)self.navigationController.navigationBar;
+        [navBar setLogoHidden:YES];
+        [self.navigationController pushViewController:tripView animated:YES];
+		[tripView release];
+		[trips release];
+		[firstTrip release];
+	}
+}
+
+- (void)loadItinerary {
+	User *user = [User sharedUser];
+	[user loadItineraryFromDB];
+	if (!user.itinerary) {
+		[[DB sharedDB] emptyItineraryDBForUsername:user.username];
+		OffexConnex *connex = [[OffexConnex alloc] init];
+		connex.delegate = self;
+		NSString *url = [connex buildOffexRequestStringWithURI:[NSString stringWithFormat:@"user/%@/itinerary",user.username]];
+		[connex beginLoadingOffexploringDataFromURL:url];
+	}
+}
+
+- (void)saveItinerary:(NSDictionary *)results {
+	User *user = [User sharedUser];
+	DB *db = [DB sharedDB];
+	sqlite3_stmt *init_statement = nil;
+	
+	const char *sql = "INSERT INTO user_itinerary (id, username, timestamp, state, area, latitude, longitude, trip_id, expiry) VALUES (?,?,?,?,?,?,?,?,?)";
+	
+	if (sqlite3_prepare_v2(db.database, sql, -1, &init_statement, NULL) != SQLITE_OK) {
+		//NSLog (@"PROBLEM - %s", sqlite3_errmsg(db.database));
+	}
+	
+	if ([[[results objectForKey:@"response"] objectForKey:@"itinerary"] objectForKey:@"item"] != [NSNull null]) {
+		
+		for (NSDictionary *item in [[[results objectForKey:@"response"] objectForKey:@"itinerary"] objectForKey:@"item"]) {
+			int trip_id;
+			
+			if ([item objectForKey:@"trip"] == [NSNull null]) {
+				trip_id = -1;
+			}
+			else {
+				trip_id = [[item objectForKey:@"trip"] intValue];
+			}
+			
+			NSTimeInterval expiry = ([NSDate timeIntervalSinceReferenceDate] + 3600);
+			
+			sqlite3_bind_int(init_statement, 1, [[item objectForKey:@"id"] intValue]);
+			sqlite3_bind_text(init_statement, 2,[user.username UTF8String], -1, SQLITE_TRANSIENT);
+			sqlite3_bind_int(init_statement, 3, [[item objectForKey:@"timestamp"] intValue]);
+			sqlite3_bind_text(init_statement, 4,[[item objectForKey:@"state"] UTF8String], -1, SQLITE_TRANSIENT);
+			sqlite3_bind_text(init_statement, 5,[[item objectForKey:@"area"] UTF8String], -1, SQLITE_TRANSIENT);
+			sqlite3_bind_double(init_statement, 6, [[[item objectForKey:@"location"] objectForKey:@"latitude"] doubleValue]);
+			sqlite3_bind_double(init_statement, 7, [[[item objectForKey:@"location"] objectForKey:@"longitude"] doubleValue]);
+			sqlite3_bind_int(init_statement, 8, trip_id);
+			sqlite3_bind_int(init_statement, 9, expiry);
+			
+			
+			sqlite3_step(init_statement);
+			sqlite3_reset(init_statement);
+		}
+	}
+}
+
+#pragma mark LoginViewController Delegate Method
+- (void)loginViewController:(LoginViewController *)login didLoginWithUsername:(NSString *)username andPassword:(NSString *)password {
+	NSDictionary *dictionary = [NSDictionary dictionaryWithObjectsAndKeys:username, @"username", password, @"password", nil];
+	[self userDidLogin:dictionary];	
+}
+
+#pragma mark offexploringConnection Delegate Methods
+- (void)offexploringConnection:(OffexConnex *)offex resultSet:(NSDictionary *)results {
+	User *user = [User sharedUser];
+	
+	if ([[results objectForKey:@"response"] objectForKey:@"itinerary"]) {
+		if ([TARGET_PARTNER isEqualToString:@"offexploring"]) {
+			[self saveItinerary:results];
+			NSDate *now = [NSDate date];
+			[[NSUserDefaults standardUserDefaults] setDouble:[now timeIntervalSince1970] forKey:@"lastItineraryLookup"];
+			[user loadItineraryFromDB];
+		}
+	}
+	else if ([[results objectForKey:@"response"] objectForKey:@"username"] != nil) {
+		[user setFromDictionary:[results objectForKey:@"response"]];
+	}
+	else {
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tripsDataDidLoad:) name:@"TripsDataDidLoad" object:nil];
+		Trips *tripsData = [[Trips alloc] init];
+		[tripsData setFromArray:[[[results objectForKey:@"response"] objectForKey:@"trips"] objectForKey:@"trip"]];
+	}
+}
+
+- (void)offexploringConnection:(OffexConnex *)offex didFireError:(NSError *) error {
+	[[NSNotificationCenter defaultCenter] removeObserver:self name:@"TripsDataDidLoad" object:nil];
+	[HUD hide:YES];
+	
+	if (loadingHostels == YES) {
+		loadingHostels = NO;
+		[downloadingHostels stopAnimating];
+		downloadingHostels.hidden = YES;
+		
+		//Handle no connection problem.
+	}
+	
+	if (self.failGracefully == YES) {
+		if (self.modalViewController == nil || ![self.modalViewController isKindOfClass:[LoginViewController class]]) {
+			
+			UIAlertView *charAlert = [[UIAlertView alloc]
+									  initWithTitle:@"Sorry"
+									  message:@"This is not a valid Off Exploring account. Please log in with a valid one."
+									  delegate:self
+									  cancelButtonTitle:@"OK"
+									  otherButtonTitles:nil];
+			[charAlert show];
+			
+			
+			
+			[self setModalTransitionStyle:UIModalTransitionStyleCoverVertical];
+			LoginViewController *logout = [[LoginViewController alloc] initWithNibName:@"LoginViewController" bundle:nil];
+			logout.delegate = self;
+			[self presentViewController:logout animated:YES completion:nil];
+			[logout release];
+			
+		}
+	}
+	else if (requestType == 10) {
+		UIAlertView *charAlert = [[UIAlertView alloc]
+								  initWithTitle:@"Unable to connect to Off Exploring"
+								  message:@"You can continue to edit your blog, and save a draft, but changes cannot be published until you are connected to the Internet"
+								  delegate:self
+								  cancelButtonTitle:@"Cancel"
+								  otherButtonTitles:@"Proceed", nil];
+		[charAlert show];
+		
+	}
+	else if (requestType == 20) {
+		UIAlertView *charAlert = [[UIAlertView alloc]
+								  initWithTitle:@"Unable to connect to Off Exploring"
+								  message:@"You cannot view or edit photos until you are connected to the Internet"
+								  delegate:self
+								  cancelButtonTitle:@"OK"
+								  otherButtonTitles:nil];
+		[charAlert show];
+		
+	}
+    else if (requestType == 30) {
+		UIAlertView *charAlert = [[UIAlertView alloc]
+								  initWithTitle:@"Unable to connect to Off Exploring"
+								  message:@"You cannot view or post messages until you are connected to the Internet"
+								  delegate:self
+								  cancelButtonTitle:@"OK"
+								  otherButtonTitles:nil];
+		[charAlert show];
+		
+    }
+    else if (requestType == 40) {
+		UIAlertView *charAlert = [[UIAlertView alloc]
+								  initWithTitle:@"Unable to connect to Off Exploring"
+								  message:@"You cannot view or post videos until you are connected to the Internet"
+								  delegate:self
+								  cancelButtonTitle:@"OK"
+								  otherButtonTitles:nil];
+		[charAlert show];
+		
+    }
+}
+
+#pragma mark HostelLoader Delgate Methods
+
+- (void)hostelLoader:(Hostels *)hostelLoader didLoadHostelsforCity:(NSString *)city country:(NSString *)country latitude:(double)latitude longitude:(double)longitude range:(double)range page:(int)page {
+	
+	[hostelLoad release];
+	self.suggestedHostel = [Hostels loadHostelFromDBorderdBy:HOSTELS_ORDER_DEFAULT];
+	
+	[UIView beginAnimations:@"HostelDisplayOpenAnimation" context:NULL];
+	[UIView setAnimationDelegate:self];
+	[UIView setAnimationDelay:0.1];
+	[UIView setAnimationDuration:0.5];
+	[UIView setAnimationDidStopSelector:@selector(animationDidStop:finished:)];
+	
+	self.hostelRating.alpha = 0;
+	self.hostelHeader.alpha = 0;
+	self.hostelDescription.alpha = 0;
+	self.hostelFooter.alpha = 0;
+	self.hostelPrice.alpha = 0;
+	[UIView commitAnimations];
+	
+}
+
+- (void)hostelLoader:(Hostels *)hostelLoader failedToLoadHostelsforCity:(NSString *)city country:(NSString *)country latitude:(double)latitude longitude:(double)longitude range:(double)range page:(int)page {	
+	if (range < 20) {
+		double currentDistance = range * 2;
+		[hostelLoad loadHostelsForArea:city country:country latitide:[NSNumber numberWithDouble:latitude] longitude:[NSNumber numberWithDouble:longitude] within:[NSNumber numberWithDouble:currentDistance]  page:0 orderedBy:[NSNumber numberWithInt:HOSTELS_ORDER_DEFAULT]];
+	}
+	else {
+		[hostelLoad release];
+		[UIView beginAnimations:@"HostelDisplayOpenAnimation" context:NULL];
+		[UIView setAnimationDelegate:self];
+		[UIView setAnimationDelay:0.1];
+		[UIView setAnimationDuration:0.5];
+		[UIView setAnimationDidStopSelector:@selector(noHostelAnimationDidStop:finished:)];
+		
+		self.hostelRating.alpha = 0;
+		self.hostelHeader.alpha = 0;
+		self.hostelDescription.alpha = 0;
+		self.hostelFooter.alpha = 0;
+		self.hostelPrice.alpha = 0;
+		[UIView commitAnimations];
+	}
+	
+}
+
+- (void)noConnectionforHostelLoader:(Hostels *)hostelLoader {
+	[hostelLoad release];
+	[UIView beginAnimations:@"HostelDisplayOpenAnimation" context:NULL];
+	[UIView setAnimationDelegate:self];
+	[UIView setAnimationDelay:0.1];
+	[UIView setAnimationDuration:0.5];
+	[UIView setAnimationDidStopSelector:@selector(noHostelAnimationDidStop:finished:)];
+	
+	self.hostelRating.alpha = 0;
+	self.hostelHeader.alpha = 0;
+	self.hostelDescription.alpha = 0;
+	self.hostelFooter.alpha = 0;
+	self.hostelPrice.alpha = 0;
+	[UIView commitAnimations];
+	
+}
+
+#pragma mark HostelSearchViewController Delegate Methods
+
+- (void)hostelSearchViewController:(HostelSearchViewController *)hsvc 
+		   didLoadHostelsForCountry:(NSString *)country 
+						   withArea:(NSString *)area {
+	self.suggestedHostel = [Hostels loadHostelFromDBorderdBy:HOSTELS_ORDER_DEFAULT];
+	[[GANTracker sharedTracker] trackPageview:@"/home/hostels/list/" withError:nil];
+	HostelTabBarViewController *hostelsViewController = [[HostelTabBarViewController alloc] initWithNibName:nil bundle:nil];
+	hostelsViewController.rootNav = self;
+	[hsvc presentViewController:hostelsViewController animated:YES completion:nil];
+	[hostelsViewController release];
+}
+
+
+- (void)hostelSearchViewControllerDidCancel:(HostelSearchViewController *)hsvc {
+	[[GANTracker sharedTracker] trackPageview:@"/home/" withError:nil];
+	[self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (NSString *)cityForHostelSearchViewController:(HostelSearchViewController *)hsvc {
+	
+	User *user = [User sharedUser];
+	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+	NSDictionary *lastHostelLookup = [prefs dictionaryForKey:[NSString stringWithFormat:@"latestHostelLookup_%@",user.username]];
+	
+	if (lastHostelLookup != nil) {
+		return [lastHostelLookup objectForKey:@"area"];
+	}
+	else {
+		return nil;
+	}
+}
+
+- (NSString *)countryForHostelSearchViewController:(HostelSearchViewController *)hsvc {
+	User *user = [User sharedUser];
+	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+	NSDictionary *lastHostelLookup = [prefs dictionaryForKey:[NSString stringWithFormat:@"latestHostelLookup_%@",user.username]];
+	
+	if (lastHostelLookup != nil) {
+		return [lastHostelLookup objectForKey:@"country"];
+	}
+	else {
+		return nil;
+	}
+}
+
+#pragma mark HostelViewController Delegate Method
+- (void)hostel:(Hostel *)hostel withRoom:(Room *)room wasBookedFor:(NSNumber *)people dismissingHostelViewController:(HostelViewController *)hvc {
+	[[GANTracker sharedTracker] trackPageview:@"/home/" withError:nil];
+	[self.navigationController dismissViewControllerAnimated:YES completion:nil];
+}
+
+#pragma mark ImageLoader Delegate Method
+- (void)imageLoader:(ImageLoader *)loader didLoadImage:(UIImage *)image forURI:(NSString *)uri {
+	self.hostelImage.image = image;
+	self.imageLoader = nil;
+}
+
+#pragma mark UIAlertView Delegate Method
+- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex {
+	
+	if ([alertView.title isEqualToString:@"Help Spread the Word"]) {
+		NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+		
+		if (buttonIndex == 0 || buttonIndex == 1) {
+			[prefs setBool:NO forKey:@"showRateMeDialog"];
+			[prefs synchronize];
+			
+			if (buttonIndex == 1) {
+				[[GANTracker sharedTracker] trackPageview:@"/home/rate_app/" withError:nil];
+				NSURL *url = [NSURL URLWithString:@"http://itunes.apple.com/gb/app/off-exploring/id373984511"];
+				[[UIApplication sharedApplication] openURL:url];
+			}
+		}
+	}
+	else {
+		if (buttonIndex == 1) {
+			if (requestType == 10) {
+				User *user = [User sharedUser];
+				user.globalDraft = YES;
+				
+				Trip *draftTrip = [[Trip alloc]initFromDictionary:nil];
+				draftTrip.name = @"Draft";	
+				draftTrip.urlSlug = @"default";	
+				[draftTrip setBlogsDataFromArray:nil];
+				[[GANTracker sharedTracker] trackPageview:@"/home/blogs/" withError:nil];
+				BlogLocationViewController *locationView = [[BlogLocationViewController alloc] initWithNibName:nil bundle:nil];
+				locationView.title = @"Locations";
+				locationView.activeTrip = draftTrip;
+				[self.navigationController pushViewController:locationView animated:YES];
+				[locationView release];
+				[draftTrip release];
+			}
+		}
+	}
+}
+
+#pragma mark MBProgressHUD Delegate Method 
+- (void)hudWasHidden {
+    // Remove HUD from screen when the HUD was hidded
+	HUD.delegate = nil;
+    [HUD removeFromSuperview];
+    [HUD release];
+	HUD = nil;
+}
+
+@end

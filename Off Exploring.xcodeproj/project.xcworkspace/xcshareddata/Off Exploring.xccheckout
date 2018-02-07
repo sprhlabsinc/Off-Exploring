@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>9146E30B-09CF-48DA-978C-16CB2F1BA2B1</string>
+	<key>IDESourceControlProjectName</key>
+	<string>Off Exploring</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>29FC074484F3C44C535B1E678C5605C0451AACDD</key>
+		<string>https://bitbucket.org/exxbrain/offexploring.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>Off Exploring.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>29FC074484F3C44C535B1E678C5605C0451AACDD</key>
+		<string>../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://bitbucket.org/exxbrain/offexploring.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>29FC074484F3C44C535B1E678C5605C0451AACDD</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>29FC074484F3C44C535B1E678C5605C0451AACDD</string>
+			<key>IDESourceControlWCCName</key>
+			<string>Off%20Exploring</string>
+		</dict>
+	</array>
+</dict>
+</plist>
